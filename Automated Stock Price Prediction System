@@ -1,0 +1,80 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import yfinance as yf
+from datetime import datetime
+
+st.set_page_config(page_title="Stock Price Predictor App", layout="wide")
+
+st.markdown(
+    """
+    <div style="background-color:#4CAF50;padding:20px;border-radius:10px">
+        <h1 style="color:white;text-align:center;font-size:36px;">📈 Stock Price Predictor App</h1>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div style="margin-bottom:20px;">
+        <h3 style="text-align:center;color:#2c3e50;font-size:24px;">Enter the Stock ID Below</h3>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+stock_options = ['GOOG', 'AAPL', 'MSFT', 'AMZN', 'TSLA', 'FB', 'NVDA', 'SPY', 'V', 'NFLX','META','TM','GM','KO']
+stock = st.selectbox(
+    "Select Stock ID",
+    stock_options,
+    help="Choose a stock from the dropdown list",
+    key="stock_input",
+)
+
+end = datetime.now()
+start = datetime(end.year - 20, end.month, end.day)
+
+try:
+    google_data = yf.download(stock, start, end)
+    if google_data.empty:
+        st.error("No data fetched. Please check the stock ticker and try again.")
+    else:
+        st.subheader("📊 Stock Data", anchor="stock_data", help="Stock price data for the selected ticker")
+        st.markdown(
+            """
+            <div style="width:90%;margin:0 auto;background-color:#ffffff;padding:20px;border-radius:10px;box-shadow:0 4px 8px rgba(0, 0, 0, 0.1);">
+                <p style="font-size:18px;">Below is the stock data for the selected ticker:</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.write(google_data)
+
+        def plot_graph(figsize, values, full_data, extra_data=0, extra_dataset=None, title="Stock Data", label1="Moving Average", label2="Close Price"):
+            fig = plt.figure(figsize=figsize)
+            plt.plot(values, 'Orange', label=label1)
+            plt.plot(full_data['Close'], 'b', label=label2)
+            if extra_data:
+                plt.plot(extra_dataset, 'Green', label="Extra Dataset")
+            plt.xlabel("Days", fontsize=16)
+            plt.ylabel("Price", fontsize=16)
+            plt.legend()
+            plt.title(title, fontsize=18)
+            return fig
+
+        st.subheader('📈 Original Close Price and Moving Averages', anchor="moving_averages", help="Displays moving averages for different periods")
+        google_data['MA_for_250_days'] = google_data.Close.rolling(250).mean()
+        google_data['MA_for_200_days'] = google_data.Close.rolling(200).mean()
+        google_data['MA_for_100_days'] = google_data.Close.rolling(100).mean()
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.pyplot(plot_graph((15, 6), google_data['MA_for_250_days'].dropna(), google_data.dropna(), 0, title="Close Price vs MA (250 days)"))
+        with col2:
+            st.pyplot(plot_graph((15, 6), google_data['MA_for_200_days'].dropna(), google_data.dropna(), 0, title="Close Price vs MA (200 days)"))
+
+        st.pyplot(plot_graph((15, 6), google_data['MA_for_100_days'].dropna(), google_data.dropna(), 0, title="Close Price vs MA (100 days)"))
+except Exception as e:
+    st.error(f"An error occurred while fetching the data: {e}")
